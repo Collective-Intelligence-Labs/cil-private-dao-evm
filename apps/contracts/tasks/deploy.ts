@@ -5,13 +5,18 @@ task("deploy", "Deploy a Feedback contract")
     .addOptionalParam("group", "Group id", "42", types.string)
     .addOptionalParam("logs", "Print the logs", true, types.boolean)
     .setAction(async ({ logs, semaphore: semaphoreAddress, group: groupId }, { ethers, run }) => {
-        if (!semaphoreAddress) {
-            const { semaphore } = await run("deploy:semaphore", {
+ 
+     
+            const { semaphore,
+                pairingAddress,
+                semaphoreVerifierAddress,
+                poseidonAddress,
+                incrementalBinaryTreeAddress } = await run("deploy:semaphore", {
                 logs
             })
 
             semaphoreAddress = semaphore.address
-        }
+        
 
         if (!groupId) {
             groupId = process.env.GROUP_ID
@@ -26,6 +31,17 @@ task("deploy", "Deploy a Feedback contract")
         if (logs) {
             console.info(`Feedback contract has been deployed to: ${feedbackContract.address}`)
         }
+
+        const UnionsFactory = await ethers.getContractFactory("UnionsRegistry",{
+            libraries: {
+                IncrementalBinaryTree: incrementalBinaryTreeAddress
+            }
+        }
+        )
+
+        const unionsContract = await UnionsFactory.deploy(semaphoreVerifierAddress)
+
+        await unionsContract.deployed();
 
         return feedbackContract
     })
